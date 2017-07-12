@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+
+options = {}
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: i2v [options] source destination'
+
+  opts.on('-d', '--duration', 'seconds per video (default 4)') do |d|
+    fail "duration must be a number" if d.to_i <= 0
+    options[:duration] = d.to_i
+  end
+
+  opts.on('-v', '--verbose', 'increase verbosity (more than one print extra info)') do
+    options[:verbose] ||= 0
+    options[:verbose] += 1
+  end
+
+  opts.on('-c', '--cores', 'number of simultaneous encodes to perform (default 8)') do |c|
+    fail "cores must be a number" if c.to_i <= 0
+    options[:cores] = c.to_i
+  end
+
+  opts.on('-h', '--help', 'print this help') do |c|
+    puts opts
+    exit
+  end
+end
+parser.parse!
+
+if ARGV.size != 2
+  puts parser.help()
+  exit(1)
+end
+
+(source, destination) = ARGV
+duration = options[:duration] || 4
+cores = options[:cores] || 8
+
+finished = 0
+all = (Dir[source + '/*.jpg'].to_a + Dir[source + '/*.JPG'].to_a)
+all.each_slice(cores) do |group|
+  threads = []
+  group.each do |path|
+    out = destination + '/' + File.split(path).last.sub(/\.[^\.]+$/, '.mp4')
+    threads << Thread.new do
+      if File.exist?(out)
+        puts "skipping #{out} because it already exists" if options[:verbose]
+      else
+        (w, h) = %x(identify \"#{path}\").match(/\d+x\d+/).to_s.split('x').map(&:to_i)
+        if w < h
+          resize = '-resize 1280x720\^ -bordercolor Black -border 1000x0 -resize 1280x720\^ -gravity Center -crop 1280x720+0+0'
+        else
+          resize = '-resize 1280x720!'
+        end
+        cmd = IO.popen("convert \"#{path}\" #{resize} \"#{path}\" 2>&1")
+        result = ''
+        result << cmd.getc until cmd.eof?
+        puts result.split(/\n/).last if result.strip != '' && options[:verbose] == 1
+        puts result if result.strip != '' && options[:verbose] == 2
+        cmd = IO.popen("ffmpeg -y -loop 1 -i \"#{path}\" -s:v 1280x720 -c:v libx264 -preset ultrafast -t \"#{duration}\" -pix_fmt yuv420p \"#{out}\" 2>&1")
+        result = ''
+        result << cmd.getc until cmd.eof?
+        puts result.split(/\n/).last if options[:verbose] == 1
+        puts result if options[:verbose] == 2
+      end
+    end
+  end
+  threads.each(&:join)
+  finished += threads.size
+  print "#{finished}/#{all.size}\r"
+end
