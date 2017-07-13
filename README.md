@@ -2,6 +2,8 @@
 
 This is a small Ruby script to convert a folder full of images into small movie files for use as a slideshow.
 
+Vertical (portrait) photos will have pillarbox bars added to both sides.
+
 We use this at our church for our wall-mounted screens.
 
 ## Installation
