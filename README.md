@@ -8,9 +8,19 @@ We use this at our church for our wall-mounted screens.
 
 ## Installation
 
-Just download the script and install ImageMagick.
+1.  Download the script
 
-Google the best way to install ImageMagick on your operating system. On a Mac with homebrew, I use `brew install imagemagick`.
+1.  Install prerequisites on Mac:
+
+    ```
+    brew install imagemagick ffmpeg ruby
+    ```
+
+    or on Debian/Ubuntu:
+
+    ```
+    sudo apt install imagemagick ffmpeg ruby
+    ```
 
 ## Usage
 
